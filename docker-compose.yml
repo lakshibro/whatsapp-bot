@@ -8,7 +8,8 @@ services:
     env_file:
       - .env
     volumes:
-      - ./data/.wwebjs_auth:/app/.wwebjs_auth
-      - ./data/conversations.db:/app/conversations.db
+      # Mount entire data directory instead of individual files
+      - ./data:/app/data
     environment:
       - NODE_ENV=production
+      - DB_PATH=/app/data/conversations.db

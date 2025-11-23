@@ -25,8 +25,11 @@ RUN npm ci --only=production
 # Copy application files
 COPY . .
 
-# Create volume mount points for persistence
-VOLUME ["/app/.wwebjs_auth", "/app/conversations.db"]
+# Create data directory for persistence
+RUN mkdir -p /app/data
+
+# Create volume mount point for persistence
+VOLUME ["/app/data"]
 
 # Run as non-root user
 RUN addgroup -g 1001 -S nodejs && \

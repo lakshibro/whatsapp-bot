@@ -12,9 +12,11 @@ dotenv.config();
 const contextManager = new ContextManager();
 const aiService = new AIService();
 
-// Initialize WhatsApp client with persistent session
+// Initialize WhatsApp client with persistent session in data directory
 const client = new Client({
-    authStrategy: new LocalAuth(),
+    authStrategy: new LocalAuth({
+        dataPath: './data/.wwebjs_auth'
+    }),
     puppeteer: {
         headless: true,
         args: ['--no-sandbox', '--disable-setuid-sandbox']
