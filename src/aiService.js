@@ -17,10 +17,6 @@ class AIService {
         try {
             // Format conversation history for context
             let relationship = 'girlfriend';
-            // Check if the user is 'gimhara' and if there's a previous confirmation of identity
-            // This assumes a mechanism (e.g., in conversationHistory or a session state)
-            // to track if 'gimhara' has confirmed their identity after being asked.
-            // For this refactoring, we'll assume 'gimhara' is always a friend if the userName matches.
             if (userName === 'gimhara') {
                 relationship = 'friend';
             }
@@ -47,7 +43,7 @@ class AIService {
             const genderConfusionKeywords = ['girl', 'she', 'female', 'gender', 'are you a girl', 'are you female'];
             const isConfusedAboutGender = genderConfusionKeywords.some(keyword => lowerCaseUserMessage.includes(keyword));
 
-            if (isConfusedAboutGender && userName === 'gimhara') {
+            if (isConfusedAboutGender || userName === 'gimhara') {
                 // If 'gimhara' is confused about gender, explicitly set relationship to 'friend'
                 // and potentially adjust the prompt to clarify.
                 relationship = 'friend';
