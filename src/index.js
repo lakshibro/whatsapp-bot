@@ -122,6 +122,24 @@ client.on('message', async (message) => {
             return;
         }
 
+        // Handle /voice command to toggle voice mode
+        if (userMessage.toLowerCase().startsWith('/voice')) {
+            const parts = userMessage.trim().split(' ');
+            const mode = parts[1]?.toLowerCase();
+
+            if (mode === 'on') {
+                contextManager.setVoiceMode(userId, true);
+                await message.reply('🎤 Voice mode enabled! I will now reply with voice messages.');
+            } else if (mode === 'off') {
+                contextManager.setVoiceMode(userId, false);
+                await message.reply('📝 Voice mode disabled. I will reply with text.');
+            } else {
+                const currentMode = contextManager.getVoiceMode(userId);
+                await message.reply(`Voice mode is currently ${currentMode ? 'ON 🎤' : 'OFF 📝'}.\nUse '/voice on' or '/voice off' to change it.`);
+            }
+            return;
+        }
+
         // Try to extract name from user message
         const extractedName = contextManager.extractNameFromMessage(userMessage);
         if (extractedName && !contextManager.getUserName(userId)) {
@@ -145,9 +163,34 @@ client.on('message', async (message) => {
         // Save bot response
         contextManager.saveMessage(userId, 'assistant', aiResponse);
 
-        // Send response
-        await message.reply(aiResponse);
-        console.log(`✉️  Response sent: ${aiResponse.substring(0, 50)}...`);
+        // Check if voice mode is enabled
+        const isVoiceMode = contextManager.getVoiceMode(userId);
+
+        if (isVoiceMode) {
+            try {
+                // Generate audio
+                const audioBase64 = await aiService.generateAudio(aiResponse);
+
+                if (audioBase64) {
+                    // Send audio message
+                    const { MessageMedia } = pkg;
+                    const media = new MessageMedia('audio/mp3', audioBase64, 'voice.mp3');
+                    await client.sendMessage(userId, media, { sendAudioAsVoice: true });
+                    console.log(`🎤 Voice response sent to ${userId}`);
+                } else {
+                    // Fallback to text if audio generation fails
+                    await message.reply(aiResponse);
+                    console.log(`✉️  Response sent (audio failed): ${aiResponse.substring(0, 50)}...`);
+                }
+            } catch (audioError) {
+                console.error('❌ Error sending voice message:', audioError);
+                await message.reply(aiResponse);
+            }
+        } else {
+            // Send text response
+            await message.reply(aiResponse);
+            console.log(`✉️  Response sent: ${aiResponse.substring(0, 50)}...`);
+        }
 
     } catch (error) {
         console.error('❌ Error handling message:', error);

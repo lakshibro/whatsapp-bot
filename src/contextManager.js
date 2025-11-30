@@ -8,6 +8,8 @@ class ContextManager {
         this.conversations = new Map();
         // In-memory storage: Map of userId -> user name
         this.userNames = new Map();
+        // In-memory storage: Map of userId -> boolean (voice mode enabled/disabled)
+        this.voiceModes = new Map();
         this.maxMessages = parseInt(process.env.MAX_CONTEXT_MESSAGES) || 20;
 
         console.log('💾 Context Manager initialized (in-memory mode)');
@@ -97,6 +99,25 @@ class ContextManager {
     setUserName(userId, name) {
         this.userNames.set(userId, name);
         console.log(`👤 Set name for ${userId}: ${name}`);
+    }
+
+    /**
+     * Get user's voice mode preference
+     * @param {string} userId - WhatsApp user ID
+     * @returns {boolean} True if voice mode is enabled
+     */
+    getVoiceMode(userId) {
+        return this.voiceModes.get(userId) || false;
+    }
+
+    /**
+     * Set user's voice mode preference
+     * @param {string} userId - WhatsApp user ID
+     * @param {boolean} enabled - Whether voice mode is enabled
+     */
+    setVoiceMode(userId, enabled) {
+        this.voiceModes.set(userId, enabled);
+        console.log(`🎤 Voice mode set for ${userId}: ${enabled}`);
     }
 
     /**

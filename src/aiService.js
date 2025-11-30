@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import * as googleTTS from 'google-tts-api';
 
 class AIService {
     constructor() {
@@ -95,6 +96,27 @@ class AIService {
             }
 
             return 'Sorry, I encountered an error processing your message. Please try again.';
+        }
+    }
+
+    async generateAudio(text) {
+        try {
+            // Use google-tts-api to generate audio URL
+            // This is a reliable way to get Google's TTS voice
+            const url = googleTTS.getAudioUrl(text, {
+                lang: 'si', // Sinhala if supported, or 'en'
+                slow: false,
+                host: 'https://translate.google.com',
+            });
+
+            // Since whatsapp-web.js needs base64, we need to fetch the audio
+            const response = await fetch(url);
+            const arrayBuffer = await response.arrayBuffer();
+            const buffer = Buffer.from(arrayBuffer);
+            return buffer.toString('base64');
+        } catch (error) {
+            console.error('Audio Generation Error:', error);
+            return null;
         }
     }
 }
