@@ -32,63 +32,52 @@ Install Docker:
 # Update system
 apt update && apt upgrade -y
 
-# Install Docker
+# Install Docker and Git
 curl -fsSL https://get.docker.com -o get-docker.sh
 sh get-docker.sh
-
-# Install Docker Compose
-apt install docker-compose -y
+apt install docker-compose git -y
 
 # Verify
 docker --version
 docker-compose --version
+git --version
 ```
 
 ## Step 3: Deploy Bot
 
-### Option A: Using Deploy Script (Recommended)
 
-From your local machine:
 
-```bash
-# Set droplet IP
-export DROPLET_IP=your-droplet-ip
+1.  **Clone the Repository**
 
-# Run deployment script
-chmod +x deploy.sh
-./deploy.sh
-```
+    SSH into your droplet if you haven't already:
+    ```bash
+    ssh root@your-droplet-ip
+    ```
 
-The script will:
-- Copy files to server
-- Create directories
-- Setup environment
-- Build and start Docker container
+    Clone the repository (replace with your repo URL):
+    ```bash
+    git clone https://github.com/LAKSHIBRO/whatsapp-bot.git
+    cd whatsapp-bot
+    ```
 
-### Option B: Manual Deployment
+2.  **Setup Environment**
 
-From your local machine:
+    ```bash
+    cp .env.example .env
+    nano .env
+    ```
+    - Paste your `GEMINI_API_KEY` and other configurations.
+    - Save and exit (`Ctrl+O`, `Enter`, `Ctrl+X`).
 
-```bash
-# Copy files to server
-scp -r * root@your-droplet-ip:/root/whatsapp-bot/
+3.  **Start the Bot**
 
-# SSH into server
-ssh root@your-droplet-ip
+    ```bash
+    # Create auth directory
+    mkdir -p .wwebjs_auth
 
-# Navigate to bot directory
-cd /root/whatsapp-bot
-
-# Setup environment
-cp .env.example .env
-nano .env  # Add your GEMINI_API_KEY
-
-# Create auth directory
-mkdir -p .wwebjs_auth
-
-# Start bot
-docker-compose up -d
-```
+    # Start with Docker Compose
+    docker-compose up -d
+    ```
 
 ## Step 4: Scan QR Code
 
@@ -129,11 +118,14 @@ docker-compose up -d
 
 ### Update Code
 ```bash
+# Go to bot directory
+cd ~/whatsapp-bot
+
 # Stop bot
 docker-compose down
 
-# Pull latest code or make changes
-# ...
+# Pull latest code
+git pull origin main
 
 # Rebuild and start
 docker-compose up -d --build
