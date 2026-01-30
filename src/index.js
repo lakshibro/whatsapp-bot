@@ -45,6 +45,7 @@ const client = new Client({
     }),
     puppeteer: {
         headless: true,
+        timeout: 60000, // Increase timeout to 60s for slow droplets
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
