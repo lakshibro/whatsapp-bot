@@ -65,6 +65,11 @@ client.on('qr', (qr) => {
     console.log('\n');
 });
 
+// Loading screen progress
+client.on('loading_screen', (percent, message) => {
+    console.log(`⏳ Loading: ${percent}% - ${message}`);
+});
+
 // Client ready
 client.on('ready', () => {
     console.log('✅ WhatsApp Bot is ready!');
