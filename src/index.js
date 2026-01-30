@@ -45,7 +45,7 @@ const client = new Client({
     }),
     puppeteer: {
         headless: true,
-        timeout: 120000, // Increase timeout to 120s for slow droplets
+        timeout: 60000, // Increase timeout to 60s for slow droplets
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
@@ -53,15 +53,7 @@ const client = new Client({
             '--disable-accelerated-2d-canvas',
             '--no-first-run',
             '--no-zygote',
-            '--single-process', // Aggressive memory saving check
-            '--disable-gpu',
-            '--disable-extensions',
-            '--disable-component-extensions-with-background-pages',
-            '--disable-default-apps',
-            '--mute-audio',
-            '--disable-client-side-phishing-detection',
-            '--disable-software-rasterizer',
-            '--disable-features=Translate,site-per-process,AudioServiceOutOfProcess,IsolateOrigins,site-per-process'
+            '--disable-gpu'
         ]
     }
 });
