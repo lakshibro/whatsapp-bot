@@ -38,6 +38,11 @@ if (!process.env.GEMINI_API_KEY) {
 const contextManager = new ContextManager();
 const aiService = new AIService();
 
+// Use fresh Chromium profile dir each run to avoid "profile in use" lock from crashed/restarted containers
+const chromiumUserDataDir = process.platform === 'win32'
+    ? undefined  // Let Puppeteer use default on Windows
+    : `/tmp/chromium-wwebjs-${Date.now()}-${process.pid}`;
+
 // Initialize WhatsApp client with persistent session in data directory
 const client = new Client({
     authStrategy: new LocalAuth({
@@ -48,6 +53,7 @@ const client = new Client({
         // Only use the Alpine Linux path if we are not on Windows
         // On Windows, let Puppeteer use its bundled Chromium or default path
         ...(process.platform === 'win32' ? {} : { executablePath: '/usr/bin/chromium-browser' }),
+        ...(chromiumUserDataDir ? { userDataDir: chromiumUserDataDir } : {}),
         timeout: 300000,
         args: [
             '--no-sandbox',
