@@ -6,7 +6,7 @@ import ContextManager from './contextManager.js';
 import AIService from './aiService.js';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { mkdirSync, existsSync, unlinkSync } from 'fs';
+import { mkdirSync, existsSync, unlinkSync, readdirSync } from 'fs';
 
 // Load environment variables
 dotenv.config();
@@ -28,16 +28,30 @@ if (!existsSync(authDir)) {
 }
 
 // Clear Chromium lock files from crashed/restarted containers (avoids "profile in use" error)
+// LocalAuth stores Chromium profile in authDir/session/ (or authDir/session-{clientId}/)
 const chromiumLockFiles = ['SingletonLock', 'SingletonSocket', 'SingletonCookie'];
-for (const lockFile of chromiumLockFiles) {
-    const lockPath = join(authDir, lockFile);
-    try {
-        if (existsSync(lockPath)) {
-            unlinkSync(lockPath);
-            console.log(`🔓 Cleared stale lock: ${lockFile}`);
+const dirsToCheck = [authDir];
+try {
+    const entries = readdirSync(authDir, { withFileTypes: true });
+    for (const e of entries) {
+        if (e.isDirectory() && e.name.startsWith('session')) {
+            dirsToCheck.push(join(authDir, e.name));
         }
-    } catch (err) {
-        // Ignore - file may be in use or already gone
+    }
+} catch (err) {
+    // Auth dir might not exist yet
+}
+for (const dir of dirsToCheck) {
+    for (const lockFile of chromiumLockFiles) {
+        const lockPath = join(dir, lockFile);
+        try {
+            if (existsSync(lockPath)) {
+                unlinkSync(lockPath);
+                console.log(`🔓 Cleared stale lock: ${lockFile}`);
+            }
+        } catch (err) {
+            // Ignore - file may be in use or already gone
+        }
     }
 }
 
