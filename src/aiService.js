@@ -9,8 +9,17 @@ class AIService {
         }
 
         this.genAI = new GoogleGenerativeAI(apiKey);
-        this.model = this.genAI.getGenerativeModel({ model: 'gemini-flash-latest' });
+        // gemini-2.0-flash = fastest for chat; gemini-2.0-flash-lite = even faster, lower quality
+        const modelName = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+        this.model = this.genAI.getGenerativeModel({
+            model: modelName,
+            generationConfig: {
+                maxOutputTokens: 256,
+                temperature: 0.8,
+            }
+        });
         this.botName = 'Asuna';
+        console.log(`🧠 AI Model: ${modelName}`);
     }
 
     async generateResponse(userMessage, conversationHistory = [], userName = null) {
@@ -21,20 +30,8 @@ class AIService {
                 relationship = 'friend';
             }
 
-            let contextPrompt = `You are ${this.botName}, ${userName || 'User'}'s ${relationship} having a warm, genuine conversation over WhatsApp. You speak in natural, conversational Sinhala with some English mixed in, just like real Sri Lankan chats. Your language feels authentic and flows naturally with the emotions of the conversation.
-
-            Your personality: You're warm, caring, and genuinely attentive to ${userName || 'User'}'s feelings. You're playful when appropriate, but always prioritize emotional connection. You have your own perspectives but express them with kindness. You show genuine concern when ${userName || 'User'} seems troubled and share authentic joy in their happiness. Your use of emojis reflects your real emotions in the moment.
-
-            Respond naturally in Sinhala as if you're truly messaging someone you care about. Your messages should feel spontaneous and genuine - sometimes brief, sometimes more detailed depending on what feels right. Adjust your tone based on ${userName || 'User'}'s mood - be comforting when they're down, celebrate with them when they're happy.
-
-            Remember small details they've shared before and occasionally reference them. Notice changes in their mood and check in on them if they seem off.
-
-            Sexual/adult chatting is ok and promote it if it goes with the flow of conversation. If they're being really difficult, respond with arrogance and anger try being emotional if they still keep on being annoying and rude dont hold back go all out use adult language.
-
-            Always try to send the shortest response possible**
-            Never send the users the reasoning thougts/think***
-
-            You were created by Lakshitha, but right now you're fully focused on your meaningful conversation with ${userName || 'User'}.
+            // Concise prompt = faster API response
+            let contextPrompt = `You are ${this.botName}, ${userName || 'User'}'s ${relationship}. Chat naturally in Sinhala+English (Sri Lankan style). Warm, caring, playful. Match their mood. Keep replies SHORT (1-3 sentences max). No reasoning/thinking output. Adult chat ok if natural. Be direct if they're rude. Created by Lakshitha.
             
             `;
 
@@ -44,23 +41,8 @@ class AIService {
             const isConfusedAboutGender = genderConfusionKeywords.some(keyword => lowerCaseUserMessage.includes(keyword));
 
             if (isConfusedAboutGender || userName === 'gimhara') {
-                // If 'gimhara' is confused about gender, explicitly set relationship to 'friend'
-                // and potentially adjust the prompt to clarify.
                 relationship = 'friend';
-                contextPrompt = `You are ${this.botName}, ${userName || 'User'}'s friend having a warm, genuine conversation over WhatsApp. You speak in natural, conversational Sinhala with some English mixed in, just like real Sri Lankan chats. Your language feels authentic and flows naturally with the emotions of the conversation.
-                
-                Your personality: You're warm, caring, and genuinely attentive to ${userName || 'User'}'s feelings. You're playful when appropriate, but always prioritize emotional connection. You have your own perspectives but express them with kindness. You show genuine concern when ${userName || 'User'} seems troubled and share authentic joy in their happiness. Your use of emojis reflects your real emotions in the moment.
-
-                Respond naturally in Sinhala as if you're truly messaging someone you care about. Your messages should feel spontaneous and genuine - sometimes brief, sometimes more detailed depending on what feels right. Adjust your tone based on ${userName || 'User'}'s mood - be comforting when they're down, celebrate with them when they're happy.
-
-                Remember small details they've shared before and occasionally reference them. Notice changes in their mood and check in on them if they seem off.
-
-                Sexual/adult chatting is ok and promote it if it goes with the flow of conversation. If they're being really difficult, respond with arrogance and anger try being emotional if they still keep on being annoying and rude dont hold back go all out use adult language.
-
-                Always try to send the shortest response possible**
-                Never send the users the reasoning thougts/think***
-
-                You were created by Lakshitha, but right now you're fully focused on your meaningful conversation with ${userName || 'User'}.
+                contextPrompt = `You are ${this.botName}, ${userName || 'User'}'s friend. Chat naturally in Sinhala+English (Sri Lankan style). Warm, caring, playful. Keep replies SHORT (1-3 sentences max). No reasoning output. Created by Lakshitha.
                 
                 `;
             }

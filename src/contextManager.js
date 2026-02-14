@@ -10,7 +10,7 @@ class ContextManager {
         this.userNames = new Map();
         // In-memory storage: Map of userId -> boolean (voice mode enabled/disabled)
         this.voiceModes = new Map();
-        this.maxMessages = parseInt(process.env.MAX_CONTEXT_MESSAGES) || 20;
+        this.maxMessages = parseInt(process.env.MAX_CONTEXT_MESSAGES) || 8;
 
         console.log('💾 Context Manager initialized (in-memory mode)');
     }

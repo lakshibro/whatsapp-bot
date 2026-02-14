@@ -206,10 +206,10 @@ client.on('message', async (message) => {
         // Save user message
         contextManager.saveMessage(userId, 'user', userMessage);
 
-        // Show typing indicator
+        // Show typing indicator (fires immediately so user sees we're working)
         chat.sendStateTyping();
 
-        // Generate AI response with user's name if available
+        // Generate AI response - optimized for low latency (short prompt, limited context)
         const aiResponse = await aiService.generateResponse(userMessage, conversationHistory, userName);
 
         // Save bot response
