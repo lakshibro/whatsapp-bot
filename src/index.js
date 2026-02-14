@@ -54,10 +54,6 @@ const client = new Client({
             '--disable-setuid-sandbox',
             '--disable-gpu'
         ]
-    },
-    webVersionCache: {
-        type: 'remote',
-        remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2412.54.html',
     }
 });
 
@@ -70,7 +66,9 @@ client.on('qr', (qr) => {
 
 // Loading screen progress
 client.on('loading_screen', (percent, message) => {
-    console.log(`⏳ Loading: ${percent}% - ${message}`);
+    if (percent % 20 === 0 || percent === 100) {
+        console.log(`⏳ Loading WhatsApp: ${percent}% - ${message}`);
+    }
 });
 
 // Client ready
@@ -81,8 +79,9 @@ client.on('ready', () => {
 });
 
 // Handle authentication success
-client.on('authenticated', () => {
+client.on('authenticated', (session) => {
     console.log('🔐 Authentication successful!');
+    console.log('📋 Session data received, initializing client...');
 });
 
 // Handle authentication failure
@@ -93,6 +92,11 @@ client.on('auth_failure', (msg) => {
 // Monitor state changes
 client.on('change_state', (state) => {
     console.log('🔄 Connection state changed to:', state);
+});
+
+// Monitor remote session saved
+client.on('remote_session_saved', () => {
+    console.log('💾 Remote session saved successfully');
 });
 
 // Handle incoming messages
