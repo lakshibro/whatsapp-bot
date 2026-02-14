@@ -52,7 +52,12 @@ const client = new Client({
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
-            '--disable-gpu'
+            '--disable-gpu',
+            // Critical for Docker/low-memory: use /tmp instead of /dev/shm (often 64MB on droplets)
+            '--disable-dev-shm-usage',
+            '--disable-software-rasterizer',
+            '--no-first-run',
+            '--disable-extensions'
         ]
     }
 });

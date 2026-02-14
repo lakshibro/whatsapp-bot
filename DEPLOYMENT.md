@@ -132,6 +132,37 @@ docker-compose up -d --build
 ```
 
 ## Troubleshooting
+upda
+### Authenticated but "WhatsApp Bot is ready!" never appears (Bot shows online but doesn't respond)
+
+**Symptoms:**
+- QR code scans successfully
+- You see "🔐 Authentication successful!" (possibly multiple times)
+- Bot appears online in WhatsApp but never responds to messages
+- "✅ WhatsApp Bot is ready!" never appears in logs
+
+**Cause:** Known whatsapp-web.js bug (fixed in v1.34.6+) - WhatsApp Web HTML changes broke the `ready` event. Also can occur if Chromium runs out of shared memory in Docker.
+
+**Fix:**
+
+1. **Update and rebuild** (this repo includes the fix):
+   ```bash
+   git pull origin main
+   docker-compose down
+   docker-compose build --no-cache
+   docker-compose up -d
+   docker-compose logs -f
+   ```
+
+2. **Clear corrupted session** (if still not working after update):
+   ```bash
+   docker-compose down -v
+   docker-compose up -d --build
+   docker-compose logs -f
+   ```
+   You will need to scan the QR code again.
+
+3. **Ensure only 1 container** is running (see "RESTART LOOP" section below).
 
 ### Bot Showing Multiple "Authentication successful!" Messages (RESTART LOOP)
 
