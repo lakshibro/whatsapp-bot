@@ -133,6 +133,72 @@ docker-compose up -d --build
 
 ## Troubleshooting
 
+### Bot Showing Multiple "Authentication successful!" Messages (RESTART LOOP)
+
+**Symptoms:**
+- You see multiple "🔐 Authentication successful!" messages
+- You see multiple "✅ WhatsApp Bot is ready!" messages
+- Bot only fully starts after you logout from WhatsApp mobile app
+
+**Cause:** Multiple container instances running OR container restart loop
+
+**Fix:**
+
+1. **First, diagnose the issue:**
+   ```bash
+   # Check how many containers are running
+   docker ps -a | grep whatsapp
+   
+   # You should see only 1 container. If you see multiple, that's the problem!
+   # Example bad output:
+   # abc123  whatsapp-ai-bot  Up 2 minutes
+   # def456  whatsapp-ai-bot  Up 5 minutes
+   # ghi789  whatsapp-ai-bot  Exited (1)
+   
+   # Check current status
+   docker-compose ps
+   
+   # View recent logs to see restart pattern
+   docker-compose logs --tail=100
+   ```
+
+2. **Clean up duplicate containers:**
+   ```bash
+   # Stop all containers
+   docker-compose down
+   
+   # Remove any orphaned whatsapp containers
+   docker ps -a | grep whatsapp | awk '{print $1}' | xargs -r docker rm -f
+   
+   # Check no containers remain
+   docker ps -a | grep whatsapp
+   # Should return nothing
+   ```
+
+3. **Restart cleanly:**
+   
+   **Option A: Keep WhatsApp session (no need to re-scan QR):**
+   ```bash
+   docker-compose up -d
+   docker-compose logs -f
+   ```
+
+   **Option B: Fresh start (will need to re-scan QR):**
+   ```bash
+   docker-compose down -v
+   docker-compose up -d
+   docker-compose logs -f
+   ```
+
+4. **Verify fix:**
+   ```bash
+   # Should show exactly 1 container
+   docker ps | grep whatsapp
+   
+   # Logs should show single authentication flow
+   docker-compose logs
+   ```
+
 ### Bot won't start
 ```bash
 # Check logs
@@ -143,13 +209,17 @@ netstat -tulpn | grep docker
 
 # Restart Docker
 systemctl restart docker
+
+# Remove any stuck profile lock
+docker-compose down -v
+docker-compose up -d
 ```
 
 ### QR code not appearing
 ```bash
 # Remove old session and restart
-rm -rf .wwebjs_auth
-docker-compose restart
+docker-compose down -v
+docker-compose up -d
 docker-compose logs -f
 ```
 
@@ -160,6 +230,8 @@ free -h
 
 # Restart bot
 docker-compose restart
+
+# If persistent, upgrade droplet to 2GB RAM
 ```
 
 ### WhatsApp disconnected
@@ -168,9 +240,26 @@ docker-compose restart
 docker-compose logs -f
 
 # If needed, rescan QR
-rm -rf .wwebjs_auth
-docker-compose restart
+docker-compose down -v
+docker-compose up -d
+docker-compose logs -f
 ```
+
+### Container keeps restarting
+```bash
+# View crash logs
+docker-compose logs --tail=200
+
+# Common causes:
+# 1. Out of memory - upgrade droplet
+# 2. Missing GEMINI_API_KEY - check .env file
+# 3. Chromium crash - clear volumes and restart
+
+# Fix:
+docker-compose down -v
+docker-compose up -d --build
+```
+
 
 ## Firewall Setup (Optional)
 

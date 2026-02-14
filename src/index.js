@@ -45,16 +45,13 @@ const client = new Client({
     }),
     puppeteer: {
         headless: true,
-        executablePath: '/usr/bin/chromium-browser',
-        timeout: 60000,
+        // Only use the Alpine Linux path if we are not on Windows
+        // On Windows, let Puppeteer use its bundled Chromium or default path
+        ...(process.platform === 'win32' ? {} : { executablePath: '/usr/bin/chromium-browser' }),
+        timeout: 300000,
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-accelerated-2d-canvas',
-            '--no-first-run',
-            '--no-zygote',
-            '--single-process',
             '--disable-gpu'
         ]
     },
