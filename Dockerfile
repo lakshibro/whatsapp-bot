@@ -25,11 +25,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
-
-# Force whatsapp-web.js 1.34.6+ (fixes "ready" event not firing after auth)
-RUN npm install whatsapp-web.js@1.34.6 --save --omit=dev
+# Install dependencies (npm install to avoid lockfile sync issues with npm ci)
+RUN npm install --omit=dev
 
 # Copy application files
 COPY . .
