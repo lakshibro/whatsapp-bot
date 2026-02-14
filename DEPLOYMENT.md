@@ -280,11 +280,12 @@ docker-compose logs -f
 
 **Cause:** Stale lock file from a crashed/restarted container. Chromium locks the profile; when the container restarts with a new ID, the lock references the old one.
 
-**Fix:** The app now uses a fresh Chromium profile directory each run (session stays in .wwebjs_auth). If you still see this:
+**Fix:** The app now clears Chromium lock files on startup. If you still see this:
 ```bash
 docker-compose down
 docker-compose up -d
 ```
+If persistent, clear the volume and re-scan QR: `docker-compose down -v && docker-compose up -d`
 
 ### Container keeps restarting
 ```bash
