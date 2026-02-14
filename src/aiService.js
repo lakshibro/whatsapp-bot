@@ -9,11 +9,7 @@ class AIService {
         }
 
         this.genAI = new GoogleGenerativeAI(apiKey);
-        // Best for conversation: gemini-2.0-flash (fast + quality) or gemini-2.5-pro-preview (max quality)
-        const modelName = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
-        this.model = this.genAI.getGenerativeModel({ model: modelName });
-        this.modelName = modelName;
-        console.log(`🧠 AI Model: ${modelName}`);
+        this.model = this.genAI.getGenerativeModel({ model: 'gemini-flash-latest' });
         this.botName = 'Asuna';
     }
 
