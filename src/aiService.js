@@ -9,7 +9,7 @@ class AIService {
         }
 
         this.genAI = new GoogleGenerativeAI(apiKey);
-        this.model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-pro' });
+        this.model = this.genAI.getGenerativeModel({ model: 'gemini-flash-latest' });
         this.botName = 'Asuna';
     }
 
