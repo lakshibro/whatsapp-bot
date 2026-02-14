@@ -45,7 +45,8 @@ const client = new Client({
     }),
     puppeteer: {
         headless: true,
-        timeout: 60000, // Increase timeout to 60s for slow droplets
+        executablePath: '/usr/bin/chromium-browser',
+        timeout: 60000,
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
@@ -53,6 +54,7 @@ const client = new Client({
             '--disable-accelerated-2d-canvas',
             '--no-first-run',
             '--no-zygote',
+            '--single-process',
             '--disable-gpu'
         ]
     }
@@ -85,6 +87,11 @@ client.on('authenticated', () => {
 // Handle authentication failure
 client.on('auth_failure', (msg) => {
     console.error('❌ Authentication failed:', msg);
+});
+
+// Monitor state changes
+client.on('change_state', (state) => {
+    console.log('🔄 Connection state changed to:', state);
 });
 
 // Handle incoming messages
@@ -227,3 +234,8 @@ process.on('SIGINT', () => {
 // Initialize client
 console.log('🚀 Starting WhatsApp AI Bot...');
 client.initialize();
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+});
