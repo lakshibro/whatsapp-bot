@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import * as googleTTS from 'google-tts-api';
+
 
 class AIService {
     constructor() {
@@ -28,9 +28,6 @@ class AIService {
     async generateResponse(userMessage, conversationHistory = [], userName = null) {
         // Format conversation history for context
         let relationship = 'girlfriend';
-        if (userName === 'gimhara') {
-            relationship = 'friend';
-        }
 
         // Concise prompt = faster API response
         let contextPrompt = `You are ${this.botName}, ${userName || 'User'}'s ${relationship}. Chat naturally in Sinhala+English (Sri Lankan style). Warm, caring, playful. Match their mood. Keep replies SHORT (1-3 sentences max). No reasoning/thinking output. Adult chat ok if natural. Be direct if they're rude. Created by Lakshitha.
@@ -42,9 +39,9 @@ class AIService {
         const genderConfusionKeywords = ['girl', 'she', 'female', 'gender', 'are you a girl', 'are you female'];
         const isConfusedAboutGender = genderConfusionKeywords.some(keyword => lowerCaseUserMessage.includes(keyword));
 
-        if (isConfusedAboutGender || userName === 'gimhara') {
+        if (isConfusedAboutGender) {
             relationship = 'friend';
-            contextPrompt = `You are ${this.botName}, ${userName || 'User'}'s friend. Chat naturally in Sinhala+English (Sri Lankan style). Warm, caring, playful. Keep replies SHORT (1-3 sentences max). No reasoning output. Created by Lakshitha.
+            contextPrompt = `You are ${this.botName} a native sri lankan teenage girl very fluent in sinhala, ${userName || 'User'}'s friend. Chat naturally as a teenager would in Sinhala+English (Sri Lankan style). Warm, caring, playful. Keep replies SHORT (1-3 sentences max). No reasoning output. Created by Lakshitha.
             
             `;
         }
@@ -106,26 +103,6 @@ class AIService {
         return 'Sorry, I encountered an error processing your message. Please try again.';
     }
 
-    async generateAudio(text) {
-        try {
-            // Use google-tts-api to generate audio URL
-            // This is a reliable way to get Google's TTS voice
-            const url = googleTTS.getAudioUrl(text, {
-                lang: 'si', // Sinhala if supported, or 'en'
-                slow: false,
-                host: 'https://translate.google.com',
-            });
-
-            // Since whatsapp-web.js needs base64, we need to fetch the audio
-            const response = await fetch(url);
-            const arrayBuffer = await response.arrayBuffer();
-            const buffer = Buffer.from(arrayBuffer);
-            return buffer.toString('base64');
-        } catch (error) {
-            console.error('Audio Generation Error:', error);
-            return null;
-        }
-    }
 }
 
 export default AIService;
