@@ -4,7 +4,6 @@ const { Client, LocalAuth } = pkg;
 import qrcode from 'qrcode-terminal';
 import ContextManager from './contextManager.js';
 import AIService from './aiService.js';
-import ApiServer from './apiServer.js'; // Import API Server
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { mkdirSync, existsSync, unlinkSync, readdirSync } from 'fs';
@@ -273,10 +272,6 @@ process.on('SIGINT', () => {
 // Initialize client
 console.log('🚀 Starting WhatsApp AI Bot...');
 client.initialize();
-
-// Initialize and start API Server
-const apiServer = new ApiServer(client, contextManager, aiService);
-apiServer.start();
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (reason, promise) => {
