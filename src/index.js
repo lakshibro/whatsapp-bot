@@ -4,6 +4,7 @@ const { Client, LocalAuth } = pkg;
 import qrcode from 'qrcode-terminal';
 import ContextManager from './contextManager.js';
 import AIService from './aiService.js';
+import { initApi, pushLog } from './api.js';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { mkdirSync, existsSync, unlinkSync, readdirSync } from 'fs';
@@ -106,6 +107,7 @@ client.on('loading_screen', (percent, message) => {
 
 // Client ready
 client.on('ready', () => {
+    pushLog('WhatsApp Bot ready', 'info');
     console.log('✅ WhatsApp Bot is ready!');
     console.log(`🤖 Bot Name: ${process.env.BOT_NAME || 'AI Assistant'}`);
     console.log(`💾 Max context messages: ${process.env.MAX_CONTEXT_MESSAGES || 20}`);
@@ -269,7 +271,11 @@ process.on('SIGINT', () => {
     process.exit(0);
 });
 
+// Initialize API server for mobile app control
+initApi(client, contextManager);
+
 // Initialize client
+pushLog('Starting WhatsApp AI Bot...', 'info');
 console.log('🚀 Starting WhatsApp AI Bot...');
 client.initialize();
 
