@@ -1,38 +1,46 @@
-# Digital Ocean Deployment Guide
+# Digital Ocean Deployment Guide (Asuna Ecosystem)
 
-Simple guide to deploy WhatsApp AI bot on Digital Ocean.
+Complete instructions to deploy **whatsapp-ai-bot** and **asuna-backend** on a Digital Ocean droplet, open ports, and configure the Asuna mobile app. Includes fix for the Chromium profile lock so you **never need to rescan QR** after code updates.
+
+---
 
 ## Prerequisites
 
 - Digital Ocean account
-- SSH key setup
-- Gemini API key
+- SSH key added to Digital Ocean
+- Google Gemini API key
+- GitHub (or your repo) with: `whatsapp-ai-bot`, `asuna-backend`
+
+---
 
 ## Step 1: Create Droplet
 
-1. Go to Digital Ocean dashboard
-2. Create → Droplets
-3. Choose:
+1. Digital Ocean → **Create** → **Droplets**
+2. Choose:
    - **Image**: Ubuntu 24.04 LTS
-   - **Plan**: Basic ($6/month, 1GB RAM)
-   - **Region**: Choose closest to you
-   - **SSH Key**: Add your SSH key
-4. Create Droplet
-5. Note the IP address
+   - **Plan**: Basic ($6/mo, 1GB RAM) or higher
+   - **Region**: Closest to you
+   - **SSH Key**: Add your key
+3. Create Droplet
+4. **Note the droplet IP** (e.g. `165.232.123.45`)
 
-## Step 2: Setup Server
+---
 
-SSH into your droplet:
+## Step 2: Initial Server Setup
+
+SSH in:
+
 ```bash
-ssh root@your-droplet-ip
+ssh root@YOUR_DROPLET_IP
 ```
 
-Install Docker:
+Install Docker, Docker Compose, Node.js, Git:
+
 ```bash
 # Update system
 apt update && apt upgrade -y
 
-# Install Docker and Git
+# Install Docker
 curl -fsSL https://get.docker.com -o get-docker.sh
 sh get-docker.sh
 apt install docker-compose git -y
@@ -40,321 +48,269 @@ apt install docker-compose git -y
 # Verify
 docker --version
 docker-compose --version
-git --version
 ```
 
-## Step 3: Deploy Bot
+---
 
+## Step 3: Open Ports (3847 & 3848)
 
-
-1.  **Clone the Repository**
-
-    SSH into your droplet if you haven't already:
-    ```bash
-    ssh root@your-droplet-ip
-    ```
-
-    Clone the repository (replace with your repo URL):
-    ```bash
-    git clone https://github.com/LAKSHIBRO/whatsapp-bot.git
-    cd whatsapp-bot
-    ```
-
-2.  **Setup Environment**
-
-    ```bash
-    cp .env.example .env
-    nano .env
-    ```
-    - Paste your `GEMINI_API_KEY` and other configurations.
-    - Save and exit (`Ctrl+O`, `Enter`, `Ctrl+X`).
-
-3.  **Start the Bot**
-
-    ```bash
-    # Create auth directory
-    mkdir -p .wwebjs_auth
-
-    # Start with Docker Compose
-    docker-compose up -d
-    ```
-
-## Step 4: Scan QR Code
-
-View logs and scan QR:
 ```bash
+# Allow SSH (don't lock yourself out)
+ufw allow 22/tcp
+
+# Asuna API ports
+ufw allow 3847/tcp   # whatsapp-ai-bot API
+ufw allow 3848/tcp   # asuna-backend API
+
+# Optional: HTTP/HTTPS for web
+ufw allow 80/tcp
+ufw allow 443/tcp
+
+ufw --force enable
+ufw status
+```
+
+Also open ports in **Digital Ocean Firewall** (Dashboard → Networking → Firewalls):
+
+- Create firewall → Add inbound rules: **Custom TCP 3847**, **Custom TCP 3848**
+- Apply to your droplet
+
+---
+
+## Step 4: Deploy whatsapp-ai-bot
+
+```bash
+# Create directory
+mkdir -p /opt/whatsapp-ai-bot
+cd /opt/whatsapp-ai-bot
+
+# Clone (replace with your repo URL)
+git clone https://github.com/YOUR_USER/whatsapp-ai-bot.git .
+# Or if you deploy from your machine, use scp/rsync to copy files
+
+# Create .env
+cp .env.example .env
+nano .env
+```
+
+**.env contents** (minimum):
+
+```
+GEMINI_API_KEY=your_gemini_api_key
+BOT_NAME=Asuna
+MAX_CONTEXT_MESSAGES=20
+API_PORT=3847
+```
+
+Save and exit (`Ctrl+O`, Enter, `Ctrl+X`).
+
+```bash
+# Build and start
+docker-compose up -d --build
+
+# Watch logs
 docker-compose logs -f
 ```
 
-1. QR code appears in logs
-2. Open WhatsApp on phone
-3. Settings → Linked Devices → Link a Device
-4. Scan the QR code from terminal
-5. Wait for "WhatsApp Bot is ready!" message
+1. Wait for QR code in logs
+2. Open WhatsApp on phone → **Settings** → **Linked Devices** → **Link a Device**
+3. Scan the QR code
+4. Wait for `WhatsApp Bot is ready!`
+5. Press `Ctrl+C` to exit logs (bot keeps running)
 
-Press `Ctrl+C` to exit logs (bot keeps running).
+---
 
-## Managing the Bot
+## Step 5: Deploy asuna-backend
 
-### View Logs
 ```bash
-docker-compose logs -f
+# Create directory
+mkdir -p /opt/asuna-backend
+cd /opt/asuna-backend
+
+# Clone (replace with your repo)
+git clone https://github.com/YOUR_USER/asuna-backend.git .
+# Or copy files from your machine
+
+# Create .env
+cp .env.example .env
+nano .env
 ```
 
-### Restart Bot
-```bash
-docker-compose restart
+**.env contents**:
+
+```
+GEMINI_API_KEY=your_gemini_api_key
+PORT=3848
 ```
 
-### Stop Bot
 ```bash
-docker-compose down
+# Install and run with pm2 (or use Docker)
+npm install
+npm install -g pm2
+pm2 start src/index.js --name asuna-backend
+pm2 save
+pm2 startup   # Enable on reboot
 ```
 
-### Start Bot
-```bash
-docker-compose up -d
-```
+Or use Docker if you have a Dockerfile for asuna-backend.
 
-### Update Code
-```bash
-# Go to bot directory
-cd ~/whatsapp-bot
+---
 
-# Stop bot
-docker-compose down
+## Step 6: Configure Asuna Mobile App
+
+1. Open the **Asuna** app on your phone
+2. Go to **Profile** (last tab)
+3. Set:
+   - **Bot URL**: `http://YOUR_DROPLET_IP:3847`  
+     (Use `https://` only if you set up SSL/reverse proxy)
+   - **Backend URL**: `http://YOUR_DROPLET_IP:3848`
+4. Tap **Save**
+
+Example: `http://165.232.123.45:3847` and `http://165.232.123.45:3848`
+
+---
+
+## Step 7: Configure Chrome Extension (Optional)
+
+1. Load the Asuna Chrome extension (unpacked)
+2. Click extension icon → enter **Backend URL**: `http://YOUR_DROPLET_IP:3848`
+3. Click **Save & Sync Now**
+
+---
+
+## Code Updates (No Rescan Required)
+
+The app clears Chromium lock files on every startup. You can update code and restart **without** losing your WhatsApp session or rescanning QR.
+
+### Update whatsapp-ai-bot
+
+```bash
+cd /opt/whatsapp-ai-bot
 
 # Pull latest code
 git pull origin main
 
-# Rebuild and start
+# Rebuild and restart
+docker-compose down
 docker-compose up -d --build
+
+# Check logs
+docker-compose logs -f
 ```
+
+No need to delete `.wwebjs_auth` or rescan QR. The lock cleanup runs automatically on startup.
+
+### Update asuna-backend
+
+```bash
+cd /opt/asuna-backend
+git pull origin main
+npm install
+pm2 restart asuna-backend
+```
+
+---
+
+## Chromium Lock Fix (Built-in)
+
+After `docker-compose down` or droplet shutdown, Chromium sometimes leaves lock files. The app now:
+
+1. **On startup**: Recursively clears all Chromium lock files (SingletonLock, SingletonSocket, SingletonCookie, etc.) in `.wwebjs_auth` and `.wwebjs_cache`
+2. **On shutdown**: Handles SIGTERM/SIGINT, calls `client.destroy()` so Chromium exits cleanly
+3. **Docker**: `stop_grace_period: 30s` gives Chromium time to shut down
+
+You no longer need to:
+- Delete `.wwebjs_auth`
+- Rescan QR after updates
+- Use `-v` or `docker-compose down -v`
+
+---
+
+## Firewall Summary
+
+| Port | Service        | Purpose                    |
+|------|----------------|----------------------------|
+| 22   | SSH            | Server access              |
+| 3847 | whatsapp-ai-bot| API for Asuna mobile app   |
+| 3848 | asuna-backend  | Diary, interests, content  |
+
+---
+
+## Management Commands
+
+### whatsapp-ai-bot (Docker)
+
+```bash
+cd /opt/whatsapp-ai-bot
+docker-compose logs -f      # View logs
+docker-compose restart      # Restart
+docker-compose down         # Stop
+docker-compose up -d        # Start
+```
+
+### asuna-backend (PM2)
+
+```bash
+pm2 logs asuna-backend
+pm2 restart asuna-backend
+pm2 stop asuna-backend
+pm2 start asuna-backend
+```
+
+---
 
 ## Troubleshooting
-upda
-### Authenticated but "WhatsApp Bot is ready!" never appears (Bot shows online but doesn't respond)
 
-**Symptoms:**
-- QR code scans successfully
-- You see "🔐 Authentication successful!" (possibly multiple times)
-- Bot appears online in WhatsApp but never responds to messages
-- "✅ WhatsApp Bot is ready!" never appears in logs
+### "Profile in use" / SingletonLock after update
 
-**Cause:** Known whatsapp-web.js bug (fixed in v1.34.6+) - WhatsApp Web HTML changes broke the `ready` event. Also can occur if Chromium runs out of shared memory in Docker.
+The app should clear this automatically. If it still fails:
 
-**Fix:**
-
-1. **Update and rebuild** (this repo includes the fix):
-   ```bash
-   git pull origin main
-   docker-compose down
-   docker-compose build --no-cache
-   docker-compose up -d
-   docker-compose logs -f
-   ```
-
-2. **Clear corrupted session** (if still not working after update):
-   ```bash
-   docker-compose down -v
-   docker-compose up -d --build
-   docker-compose logs -f
-   ```
-   You will need to scan the QR code again.
-
-3. **Ensure only 1 container** is running (see "RESTART LOOP" section below).
-
-### Bot Showing Multiple "Authentication successful!" Messages (RESTART LOOP)
-
-**Symptoms:**
-- You see multiple "🔐 Authentication successful!" messages
-- You see multiple "✅ WhatsApp Bot is ready!" messages
-- Bot only fully starts after you logout from WhatsApp mobile app
-
-**Cause:** Multiple container instances running OR container restart loop
-
-**Fix:**
-
-1. **First, diagnose the issue:**
-   ```bash
-   # Check how many containers are running
-   docker ps -a | grep whatsapp
-   
-   # You should see only 1 container. If you see multiple, that's the problem!
-   # Example bad output:
-   # abc123  whatsapp-ai-bot  Up 2 minutes
-   # def456  whatsapp-ai-bot  Up 5 minutes
-   # ghi789  whatsapp-ai-bot  Exited (1)
-   
-   # Check current status
-   docker-compose ps
-   
-   # View recent logs to see restart pattern
-   docker-compose logs --tail=100
-   ```
-
-2. **Clean up duplicate containers:**
-   ```bash
-   # Stop all containers
-   docker-compose down
-   
-   # Remove any orphaned whatsapp containers
-   docker ps -a | grep whatsapp | awk '{print $1}' | xargs -r docker rm -f
-   
-   # Check no containers remain
-   docker ps -a | grep whatsapp
-   # Should return nothing
-   ```
-
-3. **Restart cleanly:**
-   
-   **Option A: Keep WhatsApp session (no need to re-scan QR):**
-   ```bash
-   docker-compose up -d
-   docker-compose logs -f
-   ```
-
-   **Option B: Fresh start (will need to re-scan QR):**
-   ```bash
-   docker-compose down -v
-   docker-compose up -d
-   docker-compose logs -f
-   ```
-
-4. **Verify fix:**
-   ```bash
-   # Should show exactly 1 container
-   docker ps | grep whatsapp
-   
-   # Logs should show single authentication flow
-   docker-compose logs
-   ```
-
-### Bot won't start
 ```bash
-# Check logs
-docker-compose logs
-
-# Check if port is in use
-netstat -tulpn | grep docker
-
-# Restart Docker
-systemctl restart docker
-
-# Remove any stuck profile lock
-docker-compose down -v
-docker-compose up -d
-```
-
-### QR code not appearing
-```bash
-# Remove old session and restart
-docker-compose down -v
-docker-compose up -d
-docker-compose logs -f
-```
-
-### Out of memory
-```bash
-# Check memory usage
-free -h
-
-# Restart bot
-docker-compose restart
-
-# If persistent, upgrade droplet to 2GB RAM
-```
-
-### WhatsApp disconnected
-```bash
-# Check logs
-docker-compose logs -f
-
-# If needed, rescan QR
-docker-compose down -v
-docker-compose up -d
-docker-compose logs -f
-```
-
-### "Profile appears to be in use by another Chromium process"
-
-**Cause:** Stale lock file from a crashed/restarted container. Chromium locks the profile; when the container restarts with a new ID, the lock references the old one.
-
-**Fix:** The app now clears Chromium lock files on startup. If you still see this:
-```bash
+cd /opt/whatsapp-ai-bot
 docker-compose down
-docker-compose up -d
-```
-If persistent, clear the volume and re-scan QR: `docker-compose down -v && docker-compose up -d`
-
-### Container keeps restarting
-```bash
-# View crash logs
-docker-compose logs --tail=200
-
-# Common causes:
-# 1. Out of memory - upgrade droplet
-# 2. Missing GEMINI_API_KEY - check .env file
-# 3. Chromium crash - clear volumes and restart
-
-# Fix:
-docker-compose down -v
 docker-compose up -d --build
+docker-compose logs -f
 ```
 
-
-## Firewall Setup (Optional)
+Only if that fails, clear volume and rescan QR:
 
 ```bash
-# Enable firewall
-ufw allow OpenSSH
-ufw allow 80/tcp
-ufw allow 443/tcp
-ufw enable
+docker-compose down -v
+docker-compose up -d
+docker-compose logs -f
+# Rescan QR
 ```
 
-## Backup Session
+### Mobile app can't reach droplet
 
-Backup WhatsApp session data:
+- Confirm UFW allows 3847, 3848
+- Confirm Digital Ocean firewall has those rules
+- Use `http://` not `https://` unless you have SSL
+- Ensure droplet IP is correct (no typo)
+
+### API not responding
 
 ```bash
-# From server
-cd /root/whatsapp-bot
-tar -czf session-backup.tar.gz .wwebjs_auth
-
-# Download to local machine
-scp root@your-droplet-ip:/root/whatsapp-bot/session-backup.tar.gz .
+# Test from droplet
+curl http://localhost:3847/api/health
+curl http://localhost:3848/api/health
 ```
 
-Restore session:
+---
+
+## Backup WhatsApp Session
+
 ```bash
-# Upload to server
-scp session-backup.tar.gz root@your-droplet-ip:/root/whatsapp-bot/
-
-# On server
-cd /root/whatsapp-bot
-tar -xzf session-backup.tar.gz
-docker-compose restart
+cd /opt/whatsapp-ai-bot
+VOL=$(docker volume ls -q | grep wwebjs)
+docker run --rm -v $VOL:/data -v $(pwd):/backup alpine tar czf /backup/session-backup.tar.gz -C /data .
+# Download: scp root@YOUR_DROPLET_IP:/opt/whatsapp-ai-bot/session-backup.tar.gz .
 ```
+
+---
 
 ## Cost Estimate
 
-- **Droplet**: $6/month (1GB RAM)
-- **Gemini API**: ~$2/month (moderate usage)
+- Droplet: ~$6/month (1GB)
+- Gemini API: ~$2/month (moderate use)
 - **Total**: ~$8/month
-
-## Security Notes
-
-⚠️ **Change default SSH port**
-⚠️ **Setup firewall**
-⚠️ **Use non-root user** (optional but recommended)
-⚠️ **Keep `.env` file secure**
-⚠️ **Regular backups of `.wwebjs_auth/`**
-
-## Support
-
-If bot stops working:
-1. Check logs: `docker-compose logs`
-2. Restart: `docker-compose restart`
-3. Rescan QR: Delete `.wwebjs_auth` and restart
-4. Check server resources: `htop` or `free -h`

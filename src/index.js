@@ -7,7 +7,8 @@ import AIService from './aiService.js';
 import { initApi, pushLog } from './api.js';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { mkdirSync, existsSync, unlinkSync, readdirSync } from 'fs';
+import { mkdirSync, existsSync } from 'fs';
+import { clearChromiumLocks } from './clearChromiumLocks.js';
 
 // Load environment variables
 dotenv.config();
@@ -28,32 +29,11 @@ if (!existsSync(authDir)) {
     console.log('✅ Created auth directory');
 }
 
-// Clear Chromium lock files from crashed/restarted containers (avoids "profile in use" error)
-// LocalAuth stores Chromium profile in authDir/session/ (or authDir/session-{clientId}/)
-const chromiumLockFiles = ['SingletonLock', 'SingletonSocket', 'SingletonCookie'];
-const dirsToCheck = [authDir];
-try {
-    const entries = readdirSync(authDir, { withFileTypes: true });
-    for (const e of entries) {
-        if (e.isDirectory() && e.name.startsWith('session')) {
-            dirsToCheck.push(join(authDir, e.name));
-        }
-    }
-} catch (err) {
-    // Auth dir might not exist yet
-}
-for (const dir of dirsToCheck) {
-    for (const lockFile of chromiumLockFiles) {
-        const lockPath = join(dir, lockFile);
-        try {
-            if (existsSync(lockPath)) {
-                unlinkSync(lockPath);
-                console.log(`🔓 Cleared stale lock: ${lockFile}`);
-            }
-        } catch (err) {
-            // Ignore - file may be in use or already gone
-        }
-    }
+// Clear Chromium lock files - CRITICAL when droplet/container restarts after "down"
+// Prevents "profile in use" / SingletonLock error - no need to delete session or rescan QR
+const cleared = clearChromiumLocks(authDir);
+if (cleared > 0) {
+    console.log(`🔓 Cleared ${cleared} stale Chromium lock file(s)`);
 }
 
 // Verify environment variables
@@ -263,13 +243,19 @@ client.on('disconnected', (reason) => {
     process.exit(1);
 });
 
-// Graceful shutdown
-process.on('SIGINT', () => {
-    console.log('\n⏹️  Shutting down gracefully...');
+// Graceful shutdown - properly close Chromium to avoid leaving lock files
+async function shutdown(signal) {
+    console.log(`\n⏹️  Received ${signal}, shutting down gracefully...`);
     contextManager.close();
-    client.destroy();
+    try {
+        await client.destroy();
+    } catch (e) {
+        console.error('Error destroying client:', e.message);
+    }
     process.exit(0);
-});
+}
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM')); // Docker sends SIGTERM on "down"
 
 // Initialize API server for mobile app control
 initApi(client, contextManager);

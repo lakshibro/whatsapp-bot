@@ -5,13 +5,16 @@ services:
     build: .
     container_name: whatsapp-ai-bot
     restart: unless-stopped
+    stop_grace_period: 30s  # Allow Chromium to shut down cleanly, avoid lock files
     env_file:
       - .env
     volumes:
-      # Use named volume for proper permissions
       - wwebjs_auth:/app/.wwebjs_auth
     environment:
       - NODE_ENV=production
+      - API_PORT=3847
+    ports:
+      - "3847:3847"  # API for Asuna mobile app
 
 
 volumes:
