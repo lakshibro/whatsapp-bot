@@ -4,11 +4,12 @@ const { Client, LocalAuth } = pkg;
 import qrcode from 'qrcode-terminal';
 import ContextManager from './contextManager.js';
 import AIService from './aiService.js';
+import ImageService from './imageService.js';
 import { initApi, pushLog } from './api.js';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { mkdirSync, existsSync } from 'fs';
-import { clearChromiumLocks } from './clearChromiumLocks.js';
+import { clearChromiumLocks, clearChromiumLocksOnShutdown } from './clearChromiumLocks.js';
 
 // Load environment variables
 dotenv.config();
@@ -46,6 +47,7 @@ if (!process.env.GEMINI_API_KEY) {
 // Initialize services
 const contextManager = new ContextManager();
 const aiService = new AIService();
+const imageService = new ImageService();
 
 // Initialize WhatsApp client with persistent session in data directory
 const client = new Client({
@@ -58,6 +60,8 @@ const client = new Client({
         // On Windows, let Puppeteer use its bundled Chromium or default path
         ...(process.platform === 'win32' ? {} : { executablePath: '/usr/bin/chromium-browser' }),
         timeout: 300000,
+        // Use a separate user data directory to avoid lock conflicts
+        userDataDir: join(authDir, 'chromium-profile'),
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
@@ -66,7 +70,12 @@ const client = new Client({
             '--disable-dev-shm-usage',
             '--disable-software-rasterizer',
             '--no-first-run',
-            '--disable-extensions'
+            '--disable-extensions',
+            // Prevent singleton lock issues
+            '--disable-background-networking',
+            '--disable-background-timer-throttling',
+            '--disable-renderer-backgrounding',
+            '--disable-backgrounding-occluded-windows'
         ]
     }
 });
@@ -174,6 +183,83 @@ client.on('message', async (message) => {
             return;
         }
 
+        // Handle /gen command to generate images
+        if (userMessage.toLowerCase().startsWith('/gen')) {
+            const prompt = userMessage.substring(4).trim();
+            
+            if (!prompt) {
+                await message.reply('🎨 Please provide a description for the image!\n\nExample: /gen a beautiful sunset over the ocean\n\nYou can also specify options:\n/gen [prompt] --aspect 16:9 --count 2');
+                return;
+            }
+
+            // Parse options from prompt
+            let imagePrompt = prompt;
+            let aspectRatio = '1:1';
+            let numberOfImages = 1;
+
+            // Check for --aspect option
+            const aspectMatch = prompt.match(/--aspect\s+(\d+:\d+)/i);
+            if (aspectMatch) {
+                aspectRatio = aspectMatch[1];
+                imagePrompt = prompt.replace(/--aspect\s+\d+:\d+/i, '').trim();
+            }
+
+            // Check for --count option
+            const countMatch = prompt.match(/--count\s+(\d+)/i);
+            if (countMatch) {
+                numberOfImages = Math.min(Math.max(parseInt(countMatch[1]), 1), 4);
+                imagePrompt = prompt.replace(/--count\s+\d+/i, '').trim();
+            }
+
+            // Clean up prompt (remove multiple spaces)
+            imagePrompt = imagePrompt.replace(/\s+/g, ' ').trim();
+
+            if (!imagePrompt) {
+                await message.reply('🎨 Please provide a description for the image!\n\nExample: /gen a beautiful sunset over the ocean');
+                return;
+            }
+
+            try {
+                await message.reply('🎨 Generating image... This may take a moment.');
+                console.log(`🎨 Generating image for ${userId}: ${imagePrompt}`);
+
+                const images = await imageService.generateImages(imagePrompt, {
+                    numberOfImages,
+                    aspectRatio,
+                    imageSize: '1K'
+                });
+
+                if (images && images.length > 0) {
+                    const { MessageMedia } = pkg;
+                    
+                    // Send each generated image
+                    for (let i = 0; i < images.length; i++) {
+                        const imageBase64 = images[i];
+                        const media = new MessageMedia('image/png', imageBase64, `generated-${i + 1}.png`);
+                        await client.sendMessage(userId, media, { caption: i === 0 ? `🎨 Generated: "${imagePrompt}"` : '' });
+                    }
+                    
+                    console.log(`✅ Sent ${images.length} image(s) to ${userId}`);
+                } else {
+                    await message.reply('❌ Failed to generate image. Please try again with a different prompt.');
+                }
+            } catch (error) {
+                console.error('❌ Error generating image:', error);
+                let errorMessage = '❌ Failed to generate image. ';
+                
+                if (error.message?.includes('quota') || error.message?.includes('429')) {
+                    errorMessage += 'API quota exceeded. Please try again later.';
+                } else if (error.message?.includes('API key')) {
+                    errorMessage += 'Configuration error.';
+                } else {
+                    errorMessage += error.message || 'Please try again.';
+                }
+                
+                await message.reply(errorMessage);
+            }
+            return;
+        }
+
         // Try to extract name from user message
         const extractedName = contextManager.extractNameFromMessage(userMessage);
         if (extractedName && !contextManager.getUserName(userId)) {
@@ -252,13 +338,15 @@ async function shutdown(signal) {
     } catch (e) {
         console.error('Error destroying client:', e.message);
     }
+    // Clear locks on shutdown to prevent issues on next restart
+    clearChromiumLocksOnShutdown(authDir);
     process.exit(0);
 }
 process.on('SIGINT', () => shutdown('SIGINT'));
 process.on('SIGTERM', () => shutdown('SIGTERM')); // Docker sends SIGTERM on "down"
 
 // Initialize API server for mobile app control
-initApi(client, contextManager);
+initApi(client, contextManager, imageService);
 
 // Initialize client
 pushLog('Starting WhatsApp AI Bot...', 'info');

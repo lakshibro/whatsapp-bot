@@ -7,6 +7,7 @@ import cors from 'cors';
 
 let clientRef = null;
 let contextManagerRef = null;
+let imageServiceRef = null;
 const logBuffer = [];
 const MAX_LOGS = 100;
 
@@ -16,9 +17,10 @@ export function pushLog(message, level = 'info') {
     if (logBuffer.length > MAX_LOGS) logBuffer.shift();
 }
 
-export function initApi(client, contextManager) {
+export function initApi(client, contextManager, imageService) {
     clientRef = client;
     contextManagerRef = contextManager;
+    imageServiceRef = imageService;
 
     const app = express();
     const port = process.env.API_PORT || 3847;
@@ -57,6 +59,41 @@ export function initApi(client, contextManager) {
             maxContextMessages: process.env.MAX_CONTEXT_MESSAGES || 20,
             model: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
         });
+    });
+
+    // Image generation endpoint
+    app.post('/api/generate-image', async (req, res) => {
+        try {
+            const { prompt, numberOfImages = 1, aspectRatio = '1:1', imageSize = '1K', personGeneration = 'allow_all' } = req.body;
+
+            if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
+                return res.status(400).json({ error: 'Prompt is required' });
+            }
+
+            if (!imageServiceRef) {
+                return res.status(503).json({ error: 'Image service not available' });
+            }
+
+            const images = await imageServiceRef.generateImages(prompt.trim(), {
+                numberOfImages: Math.min(Math.max(parseInt(numberOfImages) || 1, 1), 4),
+                aspectRatio,
+                imageSize,
+                personGeneration
+            });
+
+            res.json({
+                success: true,
+                images: images,
+                count: images.length
+            });
+
+        } catch (error) {
+            console.error('❌ Error in /api/generate-image:', error);
+            res.status(500).json({
+                error: error.message || 'Failed to generate image',
+                success: false
+            });
+        }
     });
 
     app.listen(port, '0.0.0.0', () => {
