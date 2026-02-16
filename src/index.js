@@ -60,8 +60,6 @@ const client = new Client({
         // On Windows, let Puppeteer use its bundled Chromium or default path
         ...(process.platform === 'win32' ? {} : { executablePath: '/usr/bin/chromium-browser' }),
         timeout: 300000,
-        // Use a separate user data directory to avoid lock conflicts
-        userDataDir: join(authDir, 'chromium-profile'),
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
@@ -351,7 +349,40 @@ initApi(client, contextManager, imageService);
 // Initialize client
 pushLog('Starting WhatsApp AI Bot...', 'info');
 console.log('🚀 Starting WhatsApp AI Bot...');
-client.initialize();
+async function startClientWithRetries(maxAttempts = 3) {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+            await client.initialize();
+            return;
+        } catch (e) {
+            const msg = String(e?.message || e);
+            const looksLikeProfileLock =
+                msg.includes('Failed to launch the browser process') ||
+                msg.includes('profile appears to be in use') ||
+                msg.includes('SingletonLock') ||
+                msg.includes('process_singleton');
+
+            console.error(`❌ WhatsApp client initialize failed (attempt ${attempt}/${maxAttempts}):`, msg);
+
+            if (!looksLikeProfileLock || attempt === maxAttempts) {
+                throw e;
+            }
+
+            // Clear stale locks and retry after short backoff
+            const clearedNow = clearChromiumLocks(authDir);
+            if (clearedNow > 0) {
+                console.log(`🔓 Cleared ${clearedNow} stale Chromium lock file(s) before retry`);
+            }
+            const delayMs = 1500 * attempt;
+            await new Promise(r => setTimeout(r, delayMs));
+        }
+    }
+}
+
+startClientWithRetries().catch((e) => {
+    console.error('❌ Fatal startup error:', e?.message || e);
+    process.exit(1);
+});
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (reason, promise) => {
