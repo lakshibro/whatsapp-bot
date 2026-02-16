@@ -7,6 +7,7 @@ import cors from 'cors';
 
 let clientRef = null;
 let contextManagerRef = null;
+let aiServiceRef = null;
 const logBuffer = [];
 const MAX_LOGS = 100;
 
@@ -16,9 +17,10 @@ export function pushLog(message, level = 'info') {
     if (logBuffer.length > MAX_LOGS) logBuffer.shift();
 }
 
-export function initApi(client, contextManager) {
+export function initApi(client, contextManager, aiService) {
     clientRef = client;
     contextManagerRef = contextManager;
+    aiServiceRef = aiService;
 
     const app = express();
     const port = process.env.API_PORT || 3847;
@@ -57,6 +59,33 @@ export function initApi(client, contextManager) {
             maxContextMessages: process.env.MAX_CONTEXT_MESSAGES || 20,
             model: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
         });
+    });
+
+    // Chat endpoint for mobile app
+    app.post('/api/chat', async (req, res) => {
+        try {
+            const { message, userId = 'mobile-app' } = req.body;
+            if (!message) return res.status(400).json({ error: 'Message required' });
+
+            const userName = 'User'; // Could be passed in body
+            const history = contextManagerRef.getContext(userId);
+
+            // Save user message
+            contextManagerRef.saveMessage(userId, 'user', message);
+
+            // Generate response
+            const response = await aiServiceRef.generateResponse(message, history, userName);
+
+            // Save bot response
+            contextManagerRef.saveMessage(userId, 'assistant', response);
+
+            pushLog(`Chat request from ${userId}: ${message.substring(0, 20)}...`, 'info');
+
+            res.json({ reply: response });
+        } catch (e) {
+            pushLog(`Chat error: ${e.message}`, 'error');
+            res.status(500).json({ error: e.message });
+        }
     });
 
     app.listen(port, '0.0.0.0', () => {

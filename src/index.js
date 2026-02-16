@@ -265,7 +265,7 @@ process.on('SIGINT', () => shutdown('SIGINT'));
 process.on('SIGTERM', () => shutdown('SIGTERM')); // Docker sends SIGTERM on "down"
 
 // Initialize API server for mobile app control
-initApi(client, contextManager);
+initApi(client, contextManager, aiService);
 
 // Initialize client
 pushLog('Starting WhatsApp AI Bot...', 'info');
