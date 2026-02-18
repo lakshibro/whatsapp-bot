@@ -12,7 +12,7 @@ class AIService {
 
         // Primary model + Fallbacks
         this.models = [
-            process.env.GEMINI_MODEL || 'gemini-2.5-pro',
+            process.env.GEMINI_MODEL ||
             'gemini-2.5-flash',
             'gemini-flash-lite-latest'
         ];
