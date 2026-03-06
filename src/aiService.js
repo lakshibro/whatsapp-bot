@@ -1,5 +1,8 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
+// Backend URL for Second Brain recall (same droplet)
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3848';
+
 
 class AIService {
     constructor() {
@@ -82,6 +85,16 @@ PERSONALITY:
 `;
         }
 
+        // Fetch relevant memories from Second Brain (graceful fallback if backend is down)
+        const memories = await this.fetchMemories(userMessage);
+        if (memories.length > 0) {
+            contextPrompt += 'YOUR PERSONAL MEMORIES (things you know about the user from their past activity):\n';
+            memories.forEach(m => {
+                contextPrompt += `- [${m.date}] ${m.text}\n`;
+            });
+            contextPrompt += 'Use these memories ONLY if naturally relevant to the conversation. Do NOT force them in.\n\n';
+        }
+
         if (conversationHistory.length > 0) {
             contextPrompt += 'Previous conversation:\n';
             conversationHistory.forEach(msg => {
@@ -137,6 +150,37 @@ PERSONALITY:
         }
 
         return 'Sorry, I encountered an error processing your message. Please try again.';
+    }
+
+    /**
+     * Fetch relevant memories from the Second Brain via asuna-backend.
+     * Returns empty array if backend is unreachable (graceful degradation).
+     */
+    async fetchMemories(query) {
+        try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 3000); // 3s timeout
+
+            const res = await fetch(`${BACKEND_URL}/api/recall`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query, topK: 5 }),
+                signal: controller.signal
+            });
+            clearTimeout(timeout);
+
+            if (!res.ok) return [];
+
+            const data = await res.json();
+            if (data.memories && data.memories.length > 0) {
+                console.log(`🧠 Second Brain: Found ${data.memories.length} relevant memories`);
+            }
+            return data.memories || [];
+        } catch (e) {
+            // Backend down or timeout — no worries, just chat without memories
+            console.log('🧠 Second Brain: Offline or timed out, continuing without memories');
+            return [];
+        }
     }
 
 }
