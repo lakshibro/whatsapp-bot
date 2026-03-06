@@ -88,6 +88,50 @@ export function initApi(client, contextManager, aiService) {
         }
     });
 
+    // Proactive trigger endpoint
+    app.post('/api/proactive', async (req, res) => {
+        try {
+            const { trigger } = req.body;
+            if (!trigger) return res.status(400).json({ error: 'Trigger data required' });
+
+            const targetWaId = process.env.PRIMARY_USER_WA_ID;
+            if (!targetWaId) {
+                console.error('[Proactive] PRIMARY_USER_WA_ID not set. Cannot send proactive message.');
+                return res.status(500).json({ error: 'Target WA ID not configured' });
+            }
+
+            // Provide context to AI to generate the proactive message
+            const promptContext = `The user has been searching a lot about: ${trigger.type}. 
+Recent searches: ${trigger.context}.
+Write a short, caring, proactive message (1-2 sentences) offering to help them with this. Keep it casual, natural, and Sri Lankan style.`;
+
+            pushLog(`Generating proactive message for trigger: ${trigger.type}`, 'info');
+            
+            // Get user name and history if available
+            const userName = contextManagerRef.getUserName(targetWaId) || 'User';
+            const history = contextManagerRef.getContext(targetWaId);
+            
+            // Generate message
+            const response = await aiServiceRef.generateResponse(promptContext, history, userName);
+            
+            // Save bot response to context manager
+            contextManagerRef.saveMessage(targetWaId, 'assistant', response);
+            
+            // Send the actual message via WhatsApp Web JS client
+            if (clientRef && clientRef.info) {
+               await clientRef.sendMessage(targetWaId, response);
+               pushLog(`Sent proactive message to ${targetWaId}`, 'success');
+            } else {
+               throw new Error("WhatsApp client not connected");
+            }
+            
+            res.json({ success: true, message: response });
+        } catch (e) {
+            pushLog(`Proactive error: ${e.message}`, 'error');
+            res.status(500).json({ error: e.message });
+        }
+    });
+
     app.listen(port, '0.0.0.0', () => {
         pushLog(`API server running on port ${port}`, 'info');
         console.log(`📡 API server running on http://0.0.0.0:${port}`);
