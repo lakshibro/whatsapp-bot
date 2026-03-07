@@ -1,6 +1,6 @@
 # WhatsApp AI Bot
 
-Simple WhatsApp bot powered by Google Gemini AI. Easy to deploy on Digital Ocean.
+Simple WhatsApp bot powered by Google Gemini AI, part of the larger **Asuna Ecosystem**. It acts as the conversational interface for the ecosystem and can be monitored via the Asuna Mobile App. Easy to deploy on Digital Ocean.
 
 ## Features
 
