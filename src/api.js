@@ -132,6 +132,27 @@ Write a short, caring, proactive message (1-2 sentences) offering to help them w
         }
     });
 
+    // Second Brain Toggle Endpoints
+    app.get('/api/brain/status', (req, res) => {
+        const userId = req.query.userId || 'mobile-app'; // Or extract from a proper auth/session
+        const isEnabled = contextManagerRef?.getBrainMode(userId) ?? true;
+        res.json({ enabled: isEnabled });
+    });
+
+    app.post('/api/brain/toggle', (req, res) => {
+        const { userId = 'mobile-app', enabled } = req.body;
+        if (typeof enabled !== 'boolean') {
+            return res.status(400).json({ error: 'enabled must be a boolean' });
+        }
+        if (contextManagerRef) {
+            contextManagerRef.setBrainMode(userId, enabled);
+            pushLog(`Second Brain ${enabled ? 'enabled' : 'disabled'} for ${userId}`, 'info');
+            res.json({ success: true, enabled });
+        } else {
+            res.status(500).json({ error: 'Context manager not initialized' });
+        }
+    });
+
     app.listen(port, '0.0.0.0', () => {
         pushLog(`API server running on port ${port}`, 'info');
         console.log(`📡 API server running on http://0.0.0.0:${port}`);

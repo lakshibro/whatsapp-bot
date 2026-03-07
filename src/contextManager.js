@@ -10,6 +10,8 @@ class ContextManager {
         this.userNames = new Map();
         // In-memory storage: Map of userId -> boolean (voice mode enabled/disabled)
         this.voiceModes = new Map();
+        // In-memory storage: Map of userId -> boolean (brain mode enabled/disabled)
+        this.brainModes = new Map();
         this.maxMessages = parseInt(process.env.MAX_CONTEXT_MESSAGES) || 8;
 
         console.log('💾 Context Manager initialized (in-memory mode)');
@@ -121,6 +123,26 @@ class ContextManager {
     }
 
     /**
+     * Get user's Second Brain mode preference
+     * @param {string} userId - WhatsApp user ID
+     * @returns {boolean} True if brain mode is enabled
+     */
+    getBrainMode(userId) {
+        // Default to true (enabled) if not explicitly set
+        return this.brainModes.get(userId) ?? true;
+    }
+
+    /**
+     * Set user's Second Brain mode preference
+     * @param {string} userId - WhatsApp user ID
+     * @param {boolean} enabled - Whether brain mode is enabled
+     */
+    setBrainMode(userId, enabled) {
+        this.brainModes.set(userId, enabled);
+        console.log(`🧠 Brain mode set for ${userId}: ${enabled}`);
+    }
+
+    /**
      * Extract name from user message using pattern matching
      * Detects patterns like "my name is X", "I'm X", "call me X", etc.
      * @param {string} message - User's message
@@ -162,6 +184,7 @@ class ContextManager {
         console.log('💾 Context Manager closed');
         this.conversations.clear();
         this.userNames.clear();
+        this.brainModes.clear();
     }
 }
 

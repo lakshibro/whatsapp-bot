@@ -179,6 +179,24 @@ client.on('message', async (message) => {
             return;
         }
 
+        // Handle /brain command to toggle Second Brain memories
+        if (userMessage.toLowerCase().startsWith('/brain')) {
+            const parts = userMessage.trim().split(' ');
+            const mode = parts[1]?.toLowerCase();
+
+            if (mode === 'on') {
+                contextManager.setBrainMode(userId, true);
+                await message.reply('🧠 Second Brain mode enabled! I will remember and use past context in our conversations.');
+            } else if (mode === 'off') {
+                contextManager.setBrainMode(userId, false);
+                await message.reply('🛑 Second Brain mode disabled. I will only rely on immediate context.');
+            } else {
+                const currentMode = contextManager.getBrainMode(userId);
+                await message.reply(`Second Brain mode is currently ${currentMode ? 'ON 🧠' : 'OFF 🛑'}.\nUse '/brain on' or '/brain off' to change it.`);
+            }
+            return;
+        }
+
         // Try to extract name from user message
         const extractedName = contextManager.extractNameFromMessage(userMessage);
         if (extractedName && !contextManager.getUserName(userId)) {
@@ -196,8 +214,11 @@ client.on('message', async (message) => {
         // Show typing indicator (fires immediately so user sees we're working)
         chat.sendStateTyping();
 
+        // Check if brain mode is enabled
+        const isBrainMode = contextManager.getBrainMode(userId);
+
         // Generate AI response - optimized for low latency (short prompt, limited context)
-        const aiResponse = await aiService.generateResponse(userMessage, conversationHistory, userName);
+        const aiResponse = await aiService.generateResponse(userMessage, conversationHistory, userName, isBrainMode);
 
         // Save bot response
         contextManager.saveMessage(userId, 'assistant', aiResponse);

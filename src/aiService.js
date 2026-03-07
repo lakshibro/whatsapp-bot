@@ -29,7 +29,7 @@ class AIService {
         console.log(`🧠 AI Models configured: ${this.models.join(', ')}`);
     }
 
-    async generateResponse(userMessage, conversationHistory = [], userName = null) {
+    async generateResponse(userMessage, conversationHistory = [], userName = null, isBrainMode = true) {
         // Format conversation history for context
         let relationship = 'girlfriend';
 
@@ -86,13 +86,15 @@ PERSONALITY:
         }
 
         // Fetch relevant memories from Second Brain (graceful fallback if backend is down)
-        const memories = await this.fetchMemories(userMessage);
-        if (memories.length > 0) {
-            contextPrompt += 'YOUR PERSONAL MEMORIES (things you know about the user from their past activity):\n';
-            memories.forEach(m => {
-                contextPrompt += `- [${m.date}] ${m.text}\n`;
-            });
-            contextPrompt += 'Use these memories ONLY if naturally relevant to the conversation. Do NOT force them in.\n\n';
+        if (isBrainMode) {
+            const memories = await this.fetchMemories(userMessage);
+            if (memories.length > 0) {
+                contextPrompt += 'YOUR PERSONAL MEMORIES (things you know about the user from their past activity):\n';
+                memories.forEach(m => {
+                    contextPrompt += `- [${m.date}] ${m.text}\n`;
+                });
+                contextPrompt += 'Use these memories ONLY if naturally relevant to the conversation. Do NOT force them in.\n\n';
+            }
         }
 
         if (conversationHistory.length > 0) {
